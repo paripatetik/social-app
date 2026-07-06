@@ -6,6 +6,7 @@ import type { EditedPost, Post } from './types';
 
 type PostEditFormProps = {
   post: Post;
+  isSaving?: boolean;
   onCancel: () => void;
   onSave: (editedPost: EditedPost) => void;
 };
@@ -13,17 +14,17 @@ type PostEditFormProps = {
 type PostDraft = Pick<Post, 'title' | 'body' | 'tags'>;
 
 export function PostEditForm({
-    post,
-    onCancel,
-    onSave,
-  }: PostEditFormProps) {
-  
+  post,
+  isSaving = false,
+  onCancel,
+  onSave,
+}: PostEditFormProps) {
   const [draft, setDraft] = useState<PostDraft>({
     title: post.title,
     body: post.body,
     tags: post.tags,
   });
-  
+
   const [tagInput, setTagInput] = useState('');
 
   const hasChanges =
@@ -34,7 +35,8 @@ export function PostEditForm({
   const canSave =
     hasChanges &&
     draft.title.trim().length > 0 &&
-    draft.body.trim().length > 0;
+    draft.body.trim().length > 0 &&
+    !isSaving;
 
   function addTag() {
     const tag = tagInput.trim().replace(/^#/, '').toLowerCase();
@@ -146,6 +148,7 @@ export function PostEditForm({
       >
         <Pressable
           accessibilityRole="button"
+          disabled={isSaving}
           onPress={onCancel}
           style={{
             flex: 1,
@@ -154,6 +157,7 @@ export function PostEditForm({
             borderRadius: 8,
             borderWidth: 1,
             borderColor: '#aaa',
+            opacity: isSaving ? 0.6 : 1,
           }}
         >
           <Text>Cancel</Text>
@@ -178,7 +182,9 @@ export function PostEditForm({
             backgroundColor: canSave ? '#2563eb' : '#9ca3af',
           }}
         >
-          <Text style={{ color: 'white', fontWeight: '600' }}>Save</Text>
+          <Text style={{ color: 'white', fontWeight: '600' }}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Text>
         </Pressable>
       </View>
     </View>

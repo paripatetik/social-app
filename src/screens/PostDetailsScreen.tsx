@@ -4,6 +4,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -47,6 +48,16 @@ export function PostDetailsScreen({ route }: Props) {
     });
   }
 
+  function handleCancelEdit() {
+    editPostMutation.reset();
+    setIsEditing(false);
+  }
+
+  function handleStartEdit() {
+    editPostMutation.reset();
+    setIsEditing(true);
+  }
+
   if (postQuery.isLoading) {
     return (
       <View
@@ -63,12 +74,42 @@ export function PostDetailsScreen({ route }: Props) {
 
   if (postQuery.error || !postQuery.data) {
     return (
-      <View style={{ flex: 1, padding: 16 }}>
+      <View
+        style={{
+          flex: 1,
+          padding: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Text style={postQuery.error ? { color: '#dc2626' } : undefined}>
           {postQuery.error instanceof Error
             ? postQuery.error.message
             : 'Post not found'}
         </Text>
+
+        {postQuery.error ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={postQuery.isFetching}
+            onPress={() => {
+              void postQuery.refetch();
+            }}
+            style={{
+              marginTop: 16,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 8,
+              backgroundColor: postQuery.isFetching
+                ? '#9ca3af'
+                : '#2563eb',
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: '600' }}>
+              {postQuery.isFetching ? 'Retrying...' : 'Retry'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -93,12 +134,21 @@ export function PostDetailsScreen({ route }: Props) {
           <PostEditForm
             key={post.id}
             post={post}
-            onCancel={() => setIsEditing(false)}
+            isSaving={editPostMutation.isPending}
+            onCancel={handleCancelEdit}
             onSave={handleSave}
           />
         ) : (
-          <PostContent post={post} onEdit={() => setIsEditing(true)} />
+          <PostContent post={post} onEdit={handleStartEdit} />
         )}
+
+        {editPostMutation.error ? (
+          <Text style={{ color: '#dc2626', marginTop: 12 }}>
+            {editPostMutation.error instanceof Error
+              ? editPostMutation.error.message
+              : 'Failed to save post'}
+          </Text>
+        ) : null}
 
         <CommentSection
           postId={postId}

@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   Text,
@@ -30,6 +31,21 @@ export function FeedScreen({ navigation }: Props) {
 
   const posts = data?.pages.flatMap(page => page.posts) ?? [];
 
+  function confirmDelete(postId: number, postTitle: string) {
+    Alert.alert(
+      'Delete post?',
+      `This will delete "${postTitle}".`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deletePostMutation.mutate(postId),
+        },
+      ],
+    );
+  }
+
   if (isLoading) {
     return (
       <View
@@ -56,13 +72,42 @@ export function FeedScreen({ navigation }: Props) {
           justifyContent: 'center',
         }}
       >
-        <Text>{error instanceof Error ? error.message : String(error)}</Text>
+        <Text style={{ color: '#dc2626', textAlign: 'center' }}>
+          {error instanceof Error ? error.message : String(error)}
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={isFetching}
+          onPress={() => {
+            void refetch();
+          }}
+          style={{
+            marginTop: 16,
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 8,
+            backgroundColor: isFetching ? '#9ca3af' : '#2563eb',
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>
+            {isFetching ? 'Retrying...' : 'Retry'}
+          </Text>
+        </Pressable>
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, padding: 16 }}>
+      {deletePostMutation.error ? (
+        <Text style={{ color: '#dc2626', marginBottom: 12 }}>
+          {deletePostMutation.error instanceof Error
+            ? deletePostMutation.error.message
+            : 'Failed to delete post'}
+        </Text>
+      ) : null}
+
       <FlatList
         data={posts}
         refreshing={isRefetching && !isFetchingNextPage}
@@ -126,8 +171,9 @@ export function FeedScreen({ navigation }: Props) {
             <Pressable
               accessibilityLabel={`Delete ${item.title}`}
               accessibilityRole="button"
+              disabled={deletePostMutation.isPending}
               hitSlop={10}
-              onPress={() => deletePostMutation.mutate(item.id)}
+              onPress={() => confirmDelete(item.id, item.title)}
               style={{
                 position: 'absolute',
                 top: 8,
@@ -136,7 +182,9 @@ export function FeedScreen({ navigation }: Props) {
                 width: 28,
                 height: 28,
                 borderRadius: 14,
-                backgroundColor: '#ef4444',
+                backgroundColor: deletePostMutation.isPending
+                  ? '#9ca3af'
+                  : '#ef4444',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}

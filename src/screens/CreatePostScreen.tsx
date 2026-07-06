@@ -21,12 +21,21 @@ export function CreatePostScreen({ navigation }: Props) {
   const [body, setBody] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  
+
   const createPostMutation = useCreatePost({
     onSuccess: () => navigation.goBack(),
   });
 
+  const canCreate =
+    title.trim().length > 0 &&
+    body.trim().length > 0 &&
+    !createPostMutation.isPending;
+
   function handleCreate() {
+    if (!canCreate) {
+      return;
+    }
+
     const newPost: Post = {
       id: Date.now(),
       title: title.trim(),
@@ -115,17 +124,28 @@ export function CreatePostScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
+        disabled={!canCreate}
         onPress={handleCreate}
         style={{
           marginTop: 16,
-          backgroundColor: '#7facddff',
+          backgroundColor: canCreate ? '#7facddff' : '#9ca3af',
           borderRadius: 8,
           alignItems: 'center',
           padding: 14,
         }}
       >
-        <Text>Create post</Text>
+        <Text>
+          {createPostMutation.isPending ? 'Creating...' : 'Create post'}
+        </Text>
       </Pressable>
+
+      {createPostMutation.error ? (
+        <Text style={{ color: '#dc2626', marginTop: 8 }}>
+          {createPostMutation.error instanceof Error
+            ? createPostMutation.error.message
+            : 'Failed to create post'}
+        </Text>
+      ) : null}
     </View>
   );
 }
