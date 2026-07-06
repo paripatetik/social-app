@@ -10,6 +10,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../app/navigation/AppNavigator';
+import { PostTags } from '../modules/posts/PostTags';
 import { useCreatePost } from '../modules/posts/hooks';
 import type { Post } from '../modules/posts/types';
 
@@ -110,18 +111,7 @@ export function CreatePostScreen({ navigation }: Props) {
       />
       <Button title="Add tag" onPress={addTag} />
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {tags.map(tag => (
-          <Pressable
-            accessibilityLabel={`Remove ${tag} tag`}
-            accessibilityRole="button"
-            key={tag}
-            onPress={() => removeTag(tag)}
-          >
-            <Text>#{tag} ×</Text>
-          </Pressable>
-        ))}
-      </View>
+      <PostTags tags={tags} editable onRemove={removeTag} />
 
       <Pressable
         accessibilityRole="button"
