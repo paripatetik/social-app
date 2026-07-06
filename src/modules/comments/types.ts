@@ -2,5 +2,6 @@ export type Comment = {
   id: number;
   body: string;
   userId: number;
-  createdAt: string;
+  authorName?: string;
+  createdAt?: string;
 };

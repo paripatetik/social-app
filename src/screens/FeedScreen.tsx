@@ -18,13 +18,17 @@ export function FeedScreen({ navigation }: Props) {
     data,
     isLoading,
     error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
     isRefetching,
     refetch,
   } = usePosts();
 
   const deletePostMutation = useDeletePost();
 
-  const posts = data?.posts ?? [];
+  const posts = data?.pages.flatMap(page => page.posts) ?? [];
 
   if (isLoading) {
     return (
@@ -61,10 +65,24 @@ export function FeedScreen({ navigation }: Props) {
     <View style={{ flex: 1, padding: 16 }}>
       <FlatList
         data={posts}
-        refreshing={isRefetching}
+        refreshing={isRefetching && !isFetchingNextPage}
         onRefresh={() => {
           void refetch();
         }}
+        onEndReached={() => {
+          if (hasNextPage && !isFetching) {
+            void fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator
+              accessibilityLabel="Loading more posts"
+              style={{ marginVertical: 16 }}
+            />
+          ) : null
+        }
         keyExtractor={item => String(item.id)}
         renderItem={({ item }) => (
           <View

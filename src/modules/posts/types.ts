@@ -18,12 +18,17 @@ export type PostsResponse = {
   limit: number;
 };
 
+export type PostsPage = PostsResponse & {
+  nextSkip?: number;
+};
+
 export type EditedPost = {
   postId: number;
   title: string;
   body: string;
   tags: string[];
 };
+
 export type PostsLocalDB = {
   createdPosts: Post[];
   editedPosts: EditedPost[];

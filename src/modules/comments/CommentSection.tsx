@@ -5,9 +5,15 @@ import { useCreateComment, usePostComments } from './hooks';
 
 type CommentSectionProps = {
   postId: number;
+  onInputBlur?: () => void;
+  onInputFocus?: () => void;
 };
 
-export function CommentSection({ postId }: CommentSectionProps) {
+export function CommentSection({
+  postId,
+  onInputBlur,
+  onInputFocus,
+}: CommentSectionProps) {
   const commentsQuery = usePostComments(postId);
   const createCommentMutation = useCreateComment(postId);
   const [body, setBody] = useState('');
@@ -60,16 +66,18 @@ export function CommentSection({ postId }: CommentSectionProps) {
               }}
             >
               <Text style={{ fontWeight: '600', marginBottom: 6 }}>
-                User #{comment.userId}
+                {comment.authorName ?? `User #${comment.userId}`}
               </Text>
               <Text style={{ fontSize: 15, lineHeight: 21 }}>
                 {comment.body}
               </Text>
-              <Text
-                style={{ color: '#6b7280', fontSize: 12, marginTop: 8 }}
-              >
-                {new Date(comment.createdAt).toLocaleString()}
-              </Text>
+              {comment.createdAt ? (
+                <Text
+                  style={{ color: '#6b7280', fontSize: 12, marginTop: 8 }}
+                >
+                  {new Date(comment.createdAt).toLocaleString()}
+                </Text>
+              ) : null}
             </View>
           ))}
         </View>
@@ -81,6 +89,8 @@ export function CommentSection({ postId }: CommentSectionProps) {
         <TextInput
           value={body}
           onChangeText={setBody}
+          onBlur={onInputBlur}
+          onFocus={onInputFocus}
           placeholder="Write a comment"
           multiline
           textAlignVertical="top"

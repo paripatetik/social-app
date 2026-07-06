@@ -1,5 +1,13 @@
-import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -16,8 +24,20 @@ export function PostDetailsScreen({ route }: Props) {
   const { postId } = route.params;
   const postQuery = usePostDetails(postId);
   const [isEditing, setIsEditing] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isCommentInputFocused = useRef(false);
 
   const editPostMutation = useEditPost();
+
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => {
+      if (isCommentInputFocused.current) {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   function handleSave(editedPost: EditedPost) {
     editPostMutation.mutate(editedPost, {
@@ -56,26 +76,40 @@ export function PostDetailsScreen({ route }: Props) {
   const post = postQuery.data;
 
   return (
-    <ScrollView
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
     >
-      <Text style={{ color: '#666', marginBottom: 12 }}>
-        User #{post.userId}
-      </Text>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={{ color: '#666', marginBottom: 12 }}>
+          User #{post.userId}
+        </Text>
 
-      {isEditing ? (
-        <PostEditForm
-          key={post.id}
-          post={post}
-          onCancel={() => setIsEditing(false)}
-          onSave={handleSave}
+        {isEditing ? (
+          <PostEditForm
+            key={post.id}
+            post={post}
+            onCancel={() => setIsEditing(false)}
+            onSave={handleSave}
+          />
+        ) : (
+          <PostContent post={post} onEdit={() => setIsEditing(true)} />
+        )}
+
+        <CommentSection
+          postId={postId}
+          onInputBlur={() => {
+            isCommentInputFocused.current = false;
+          }}
+          onInputFocus={() => {
+            isCommentInputFocused.current = true;
+          }}
         />
-      ) : (
-        <PostContent post={post} onEdit={() => setIsEditing(true)} />
-      )}
-
-      <CommentSection postId={postId} />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -1,10 +1,15 @@
 
-const API_URL = 'https://dummyjson.com';
-
 import type { EditedPost, Post, PostsResponse } from './types';
 
-export async function getPosts(): Promise<PostsResponse> {
-  const response = await fetch(`${API_URL}/posts?limit=10`);
+const API_URL = 'https://dummyjson.com';
+
+export async function getPosts(
+  skip = 0,
+  limit = 10,
+): Promise<PostsResponse> {
+  const response = await fetch(
+    `${API_URL}/posts?limit=${limit}&skip=${skip}`,
+  );
 
   if (!response.ok) {
     throw new Error('Failed to fetch posts');

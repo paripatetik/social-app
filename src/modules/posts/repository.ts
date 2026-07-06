@@ -5,11 +5,14 @@ import {
   editPostInLocalDB,
   readLocalDB,
 } from './storage';
-import type { Post, PostsResponse, EditedPost } from './types';
+import type { EditedPost, Post, PostsPage } from './types';
 
-export async function getFeedPosts(): Promise<PostsResponse> {
+export async function getFeedPosts(
+  skip = 0,
+  limit = 10,
+): Promise<PostsPage> {
   const [apiData, localDB] = await Promise.all([
-    getPosts(),
+    getPosts(skip, limit),
     readLocalDB(),
   ]);
 
@@ -34,19 +37,23 @@ export async function getFeedPosts(): Promise<PostsResponse> {
       };
     });
 
-  const posts = [
-    ...localDB.createdPosts,
-    ...apiPosts,
-  ];
+  const nextSkip =
+    apiData.skip + apiData.limit < apiData.total
+      ? apiData.skip + apiData.limit
+      : undefined;
 
   return {
     ...apiData,
-    posts,
+    posts: [
+      ...(skip === 0 ? localDB.createdPosts : []),
+      ...apiPosts,
+    ],
     total:
       Math.max(
         0,
         apiData.total - localDB.deletedPostsIds.length,
       ) + localDB.createdPosts.length,
+    nextSkip,
   };
 }
 

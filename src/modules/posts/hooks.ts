@@ -1,8 +1,10 @@
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import {
   createFeedPost,
@@ -11,7 +13,9 @@ import {
   getFeedPosts,
   getPostDetails,
 } from './repository';
-import type { Post, PostsResponse } from './types';
+import type { EditedPost, Post, PostsPage } from './types';
+
+type PostsCache = InfiniteData<PostsPage, number>;
 
 export const postKeys = {
   all: ['posts'] as const,
@@ -19,9 +23,11 @@ export const postKeys = {
 };
 
 export function usePosts() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: postKeys.all,
-    queryFn: getFeedPosts,
+    queryFn: ({ pageParam }) => getFeedPosts(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextSkip,
   });
 }
 
@@ -33,8 +39,9 @@ export function usePostDetails(postId: number) {
     queryFn: () => getPostDetails(postId),
     initialData: () =>
       queryClient
-        .getQueryData<PostsResponse>(postKeys.all)
-        ?.posts.find(post => post.id === postId),
+        .getQueryData<PostsCache>(postKeys.all)
+        ?.pages.flatMap(page => page.posts)
+        .find(post => post.id === postId),
   });
 }
 
@@ -50,21 +57,33 @@ export function useCreatePost(options: UseCreatePostOptions = {}) {
     onMutate: async (newPost: Post) => {
       await queryClient.cancelQueries({ queryKey: postKeys.all });
 
-      const previousData = queryClient.getQueryData<PostsResponse>(
+      const previousData = queryClient.getQueryData<PostsCache>(
         postKeys.all,
       );
 
-      queryClient.setQueryData<PostsResponse>(
+      queryClient.setQueryData<PostsCache>(
         postKeys.all,
         currentData => {
           if (!currentData) {
             return currentData;
           }
 
+          const [firstPage, ...remainingPages] = currentData.pages;
+
+          if (!firstPage) {
+            return currentData;
+          }
+
           return {
             ...currentData,
-            posts: [newPost, ...currentData.posts],
-            total: currentData.total + 1,
+            pages: [
+              {
+                ...firstPage,
+                posts: [newPost, ...firstPage.posts],
+                total: firstPage.total + 1,
+              },
+              ...remainingPages,
+            ],
           };
         },
       );
@@ -91,11 +110,11 @@ export function useDeletePost() {
     onMutate: async (postId: number) => {
       await queryClient.cancelQueries({ queryKey: postKeys.all });
 
-      const previousData = queryClient.getQueryData<PostsResponse>(
+      const previousData = queryClient.getQueryData<PostsCache>(
         postKeys.all,
       );
 
-      queryClient.setQueryData<PostsResponse>(
+      queryClient.setQueryData<PostsCache>(
         postKeys.all,
         currentData => {
           if (!currentData) {
@@ -104,8 +123,11 @@ export function useDeletePost() {
 
           return {
             ...currentData,
-            posts: currentData.posts.filter(post => post.id !== postId),
-            total: Math.max(0, currentData.total - 1),
+            pages: currentData.pages.map(page => ({
+              ...page,
+              posts: page.posts.filter(post => post.id !== postId),
+              total: Math.max(0, page.total - 1),
+            })),
           };
         },
       );
@@ -128,6 +150,64 @@ export function useEditPost() {
 
   return useMutation({
     mutationFn: editFeedPost,
+    onMutate: async (editedPost: EditedPost) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: postKeys.all }),
+        queryClient.cancelQueries({
+          queryKey: postKeys.detail(editedPost.postId),
+        }),
+      ]);
+
+      const previousPosts = queryClient.getQueryData<PostsCache>(
+        postKeys.all,
+      );
+      const previousPost = queryClient.getQueryData<Post>(
+        postKeys.detail(editedPost.postId),
+      );
+
+      const applyEdit = (post: Post): Post =>
+        post.id === editedPost.postId
+          ? {
+              ...post,
+              title: editedPost.title,
+              body: editedPost.body,
+              tags: editedPost.tags,
+            }
+          : post;
+
+      queryClient.setQueryData<PostsCache>(
+        postKeys.all,
+        currentData =>
+          currentData
+            ? {
+                ...currentData,
+                pages: currentData.pages.map(page => ({
+                  ...page,
+                  posts: page.posts.map(applyEdit),
+                })),
+              }
+            : currentData,
+      );
+
+      queryClient.setQueryData<Post>(
+        postKeys.detail(editedPost.postId),
+        currentPost => currentPost ? applyEdit(currentPost) : currentPost,
+      );
+
+      return { previousPost, previousPosts };
+    },
+    onError: (_error, editedPost, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(postKeys.all, context.previousPosts);
+      }
+
+      if (context?.previousPost) {
+        queryClient.setQueryData(
+          postKeys.detail(editedPost.postId),
+          context.previousPost,
+        );
+      }
+    },
 
     onSettled: async (_data, _error, editedPost) => {
       await queryClient.invalidateQueries({
