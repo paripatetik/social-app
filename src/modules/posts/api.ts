@@ -1,26 +1,7 @@
-import { readLocalDB } from "./localDB";
 
 const API_URL = 'https://dummyjson.com';
 
-export type Post = {
-  id: number;
-  title: string;
-  body: string;
-  tags: string[];
-  reactions: {
-    likes: number;
-    dislikes: number;
-  };
-  views: number;
-  userId: number;
-};
-
-export type PostsResponse = {
-  posts: Post[];
-  total: number;
-  skip: number;
-  limit: number;
-};
+import type { EditedPost, Post, PostsResponse } from './types';
 
 export async function getPosts(): Promise<PostsResponse> {
   const response = await fetch(`${API_URL}/posts?limit=10`);
@@ -30,29 +11,6 @@ export async function getPosts(): Promise<PostsResponse> {
   }
 
   return response.json();
-}
-
-export async function getFeedPosts(): Promise<PostsResponse> {
-  const [apiData, localDB] = await Promise.all([
-    getPosts(),
-    readLocalDB(),
-  ]);
-
-  const deletedIds = new Set(localDB.deletedPostsIds);
-
-  const posts = [
-    ...localDB.createdPosts,
-    ...apiData.posts.filter(post => !deletedIds.has(post.id)),
-  ];
-
-  return {
-    ...apiData,
-    posts,
-    total: Math.max(
-      0,
-      apiData.total - localDB.deletedPostsIds.length,
-    ) + localDB.createdPosts.length,
-  };
 }
 
 export async function getPostById(postId: number): Promise<Post> {
@@ -89,4 +47,23 @@ export async function deletePost(postId: number): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete post');
   }
+}
+
+export async function editPost(
+  postId: number,
+  updatedPost: Omit<EditedPost, 'postId'>,
+): Promise<Post> {
+  const response = await fetch(`${API_URL}/posts/${postId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updatedPost),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to edit post');
+  }
+
+  return response.json();
 }

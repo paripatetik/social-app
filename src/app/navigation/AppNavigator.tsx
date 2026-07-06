@@ -19,22 +19,22 @@ export function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        
         <Stack.Screen
-        name="Feed"
-        component={FeedScreen}
-        options={({ navigation }) => ({
-          title: 'Posts',
-          headerRight: () => (
-            <Pressable
-              onPress={() => navigation.navigate('CreatePost')}
-              style={{ paddingHorizontal: 12 }}
-            >
-              <Text style={{ fontWeight: '600' }}>Create Post</Text>
-            </Pressable>
-          ),
-        })}
-      />
+          name="Feed"
+          component={FeedScreen}
+          options={({ navigation }) => ({
+            title: 'Posts',
+            headerRight: () => (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('CreatePost')}
+                style={{ paddingHorizontal: 12 }}
+              >
+                <Text style={{ fontWeight: '600' }}>Create Post</Text>
+              </Pressable>
+            ),
+          })}
+        />
 
         <Stack.Screen
           name="PostDetails"
@@ -51,4 +51,3 @@ export function AppNavigator() {
     </NavigationContainer>
   );
 }
-
