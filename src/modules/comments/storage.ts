@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Comment } from './types';
 
+// Keep comments per post so adding one comment does not rewrite the posts DB.
 function commentsKey(postId: number) {
   return `comments:${postId}`;
 }

@@ -1,4 +1,3 @@
-
 import type { EditedPost, Post, PostsResponse } from './types';
 
 const API_URL = 'https://dummyjson.com';

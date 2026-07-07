@@ -4,6 +4,7 @@ import type { Post, PostsLocalDB, EditedPost } from './types';
 
 const LOCAL_DB_KEY = 'localDB';
 
+// Store only local deltas.
 function createEmptyDB(): PostsLocalDB {
   return {
     createdPosts: [],
@@ -12,6 +13,7 @@ function createEmptyDB(): PostsLocalDB {
   };
 }
 
+// First read also creates the key, so the rest of the app can rely on shape.
 export async function readLocalDB(): Promise<PostsLocalDB> {
   const storedValue = await AsyncStorage.getItem(LOCAL_DB_KEY);
 
@@ -53,6 +55,7 @@ export async function deletePostFromLocalDB(
     post => post.id === postId,
   );
 
+  // Local-only posts can be removed completely.
   if (isCreatedPost) {
     await writeLocalDB({
       ...localDB,
@@ -64,6 +67,7 @@ export async function deletePostFromLocalDB(
     return;
   }
 
+  // API posts are hidden with a tombstone because the dummy API will re-send them.
   if (localDB.deletedPostsIds.includes(postId)) {
     return;
   }
@@ -84,6 +88,7 @@ export async function editPostInLocalDB(
     post => post.id === postId,
   );
 
+  // Created posts live only locally, so edit the actual local object.
   if (isCreatedPost) {
     await writeLocalDB({
       ...localDB,
@@ -102,6 +107,7 @@ export async function editPostInLocalDB(
     return;
   }
 
+  // API posts keep one latest local overlay by post id.
   await writeLocalDB({
     ...localDB,
     editedPosts: [

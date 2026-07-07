@@ -7,6 +7,7 @@ import {
 } from './storage';
 import type { EditedPost, Post, PostsPage } from './types';
 
+// The feed is API data with local AsyncStorage changes layered on top.
 export async function getFeedPosts(
   skip = 0,
   limit = 10,
@@ -42,6 +43,8 @@ export async function getFeedPosts(
       ? apiData.skip + apiData.limit
       : undefined;
 
+  // Local-only posts do not affect DummyJSON pagination, so they are only
+  // prepended to the first page.
   return {
     ...apiData,
     posts: [
@@ -57,6 +60,7 @@ export async function getFeedPosts(
   };
 }
 
+// Details resolve local state first: deleted, created, then edited API posts.
 export async function getPostDetails(postId: number): Promise<Post> {
   const localDB = await readLocalDB();
 
@@ -82,13 +86,14 @@ export async function getPostDetails(postId: number): Promise<Post> {
   }
 
   return {
-  ...apiPost,
-  title: editedPost.title,
-  body: editedPost.body,
-  tags: editedPost.tags,
-};
+    ...apiPost,
+    title: editedPost.title,
+    body: editedPost.body,
+    tags: editedPost.tags,
+  };
 }
 
+// DummyJSON accepts the request but does not persist it, so we persist locally.
 export async function createFeedPost(post: Post): Promise<Post> {
   await createPost(post);
   await addPostToLocalDB(post);
@@ -96,6 +101,7 @@ export async function createFeedPost(post: Post): Promise<Post> {
   return post;
 }
 
+// Local-only posts do not exist on the API; API posts need a local tombstone.
 export async function deleteFeedPost(postId: number): Promise<number> {
   const localDB = await readLocalDB();
   const isCreatedPost = localDB.createdPosts.some(
@@ -111,7 +117,10 @@ export async function deleteFeedPost(postId: number): Promise<number> {
   return postId;
 }
 
-export async function editFeedPost(editedPost: EditedPost,): Promise<EditedPost> {
+// Edits are stored locally as an overlay because DummyJSON does not persist them.
+export async function editFeedPost(
+  editedPost: EditedPost,
+): Promise<EditedPost> {
   const localDB = await readLocalDB();
 
   const isCreatedPost = localDB.createdPosts.some(

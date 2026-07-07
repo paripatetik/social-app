@@ -13,8 +13,10 @@ import {
   getFeedPosts,
   getPostDetails,
 } from './repository';
+
 import type { EditedPost, Post, PostsPage } from './types';
 
+// Infinite query cache shape used by the optimistic updates below.
 type PostsCache = InfiniteData<PostsPage, number>;
 
 export const postKeys = {
@@ -23,6 +25,7 @@ export const postKeys = {
 };
 
 export function usePosts() {
+  
   return useInfiniteQuery({
     queryKey: postKeys.all,
     queryFn: ({ pageParam }) => getFeedPosts(pageParam),
@@ -37,6 +40,7 @@ export function usePostDetails(postId: number) {
   return useQuery({
     queryKey: postKeys.detail(postId),
     queryFn: () => getPostDetails(postId),
+    // Show cached feed data immediately, then let the detail query verify it.
     initialData: () =>
       queryClient
         .getQueryData<PostsCache>(postKeys.all)
@@ -57,6 +61,7 @@ export function useCreatePost(options: UseCreatePostOptions = {}) {
     onMutate: async (newPost: Post) => {
       await queryClient.cancelQueries({ queryKey: postKeys.all });
 
+      // Save a snapshot so the optimistic insert can be rolled back on failure.
       const previousData = queryClient.getQueryData<PostsCache>(
         postKeys.all,
       );
@@ -79,6 +84,7 @@ export function useCreatePost(options: UseCreatePostOptions = {}) {
             pages: [
               {
                 ...firstPage,
+                // New local posts are visible at the top before the request ends.
                 posts: [newPost, ...firstPage.posts],
                 total: firstPage.total + 1,
               },
@@ -110,6 +116,7 @@ export function useDeletePost() {
     onMutate: async (postId: number) => {
       await queryClient.cancelQueries({ queryKey: postKeys.all });
 
+      // Remove the card immediately, but keep the previous cache for rollback.
       const previousData = queryClient.getQueryData<PostsCache>(
         postKeys.all,
       );
@@ -165,6 +172,7 @@ export function useEditPost() {
         postKeys.detail(editedPost.postId),
       );
 
+      // Apply the same optimistic edit to both feed pages and the detail cache.
       const applyEdit = (post: Post): Post =>
         post.id === editedPost.postId
           ? {
